@@ -1,0 +1,9 @@
+---
+# tasks file for ansible-demo
+  - name: Get config for IOS devices
+    ios_facts:
+      gather_subset: all
+      
+  - name: Display the config
+    debug:
+      msg: "The hostname is {{ ansible_net_hostname }} and the OS is {{ ansible_net_version }}"

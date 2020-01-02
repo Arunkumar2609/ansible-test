@@ -7,3 +7,14 @@
   - name: Display the config
     debug:
       msg: "The hostname is {{ ansible_net_hostname }} and the OS is {{ ansible_net_version }}"
+
+  - name: Config Backup
+    ios_command:
+      commands:
+        - show run
+    register: config
+      
+  - name: Save output /ansible/backups
+    copy:
+      content: "{{ config.stdout[0] }}"
+      dest: "/ansible/backups/show_run_{{ inventory_hostname }}.txt"

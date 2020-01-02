@@ -2,7 +2,7 @@
 - name: Network Getting Started First Playbook Extended
   connection: "{{ ansible_connection }}"
   gather_facts: false
-  hosts: routers
+  hosts: all
 
   roles:
     - ansible-demo

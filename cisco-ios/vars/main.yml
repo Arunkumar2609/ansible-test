@@ -1,0 +1,10 @@
+---
+# vars file for cisco-ios
+compliant_ios_version: 16.08.01a
+# compliant_ios_version: 15.2(4)M4
+flash_dir: flash0
+new_system_image: c2900-universalk9-mz.SPA.152-4.M4.bin
+ftp_server: gnoc-operations.flex.com
+ftp_user: gnt_auto
+ftp_pass: gnt_auto!
+ansible_command_timeout: 1200

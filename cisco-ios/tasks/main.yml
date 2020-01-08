@@ -1,0 +1,122 @@
+---
+# tasks file for cisco-ios
+  - name: Get config for IOS devices
+    ios_facts:
+      gather_subset: all
+      
+  - name: Display the Version of IOS
+    debug:
+      msg: "The hostname is {{ ansible_net_hostname }} and the OS is {{ ansible_net_version }}"
+
+  - name: Upgrade IOS Image if not compliant_ios_version
+    block:
+
+    - name: Push FTP config to backup Image and startup-config
+      ios_config:
+        lines:
+          - "ip ftp username {{ ftp_user }}"
+          - "ip ftp password {{ ftp_pass }}"
+
+    - name: Copy the startup config to FTP server
+      ios_command:
+        commands: 
+          - command: 'copy nvram:startup-config ftp://{{ ftp_server }}/{{ansible_net_hostname}}-startup-config.conf'
+            prompt: 
+              - 'Address or name of remote host \[{{ ftp_server }}\]'
+              - 'Destination filename \[{{ansible_net_hostname}}-startup-config.conf\]'
+            answer: 
+              - "\r"
+              - "\r"
+
+          - command: 'copy running-config ftp://{{ ftp_server }}/{{ansible_net_hostname}}-running-config.conf'
+            prompt: 
+              - 'Address or name of remote host \[{{ ftp_server }}\]'
+              - 'Destination filename \[{{ansible_net_hostname}}-running-config.conf\]'
+            answer: 
+              - "\r"
+              - "\r"
+          # - command: 'copy flash0: ftp://{{ ftp_server }}'
+          #   prompt:
+          #     - 'Source filename \[\]'
+          #     - 'Address or name of remote host \[{{ ftp_server }}\]'
+          #     - 'Destination filename \[dir\]'
+          #   answer:
+          #     - "\r"
+          #     - "\r"
+          #     - "{{ansible_net_hostname}}-running-config.conf\n"
+
+    # - name: Print List of all Files and Directories in flash Memory 
+    #   ios_command:
+    #     commands: "dir flash0:"
+
+
+    - name: Delete all Entries in Bootable Image list
+      ios_config:
+        lines: 'no boot system'
+
+    - name: Copy IOS Image from FTP to Router
+      ios_command:
+        commands: 
+          - command: 'copy ftp://{{ ftp_server }}/{{new_system_image }} flash0:/{{ new_system_image}}'
+            prompt: 'Destination filename \[{{new_system_image}}\]'
+            answer: "\r"
+
+    - name: Set Upgrade Image as Boot image
+      ios_config:
+        lines: 'boot system {{ flash_dir }}:/{{ new_system_image }}'
+
+    - name: Updates GRUB menu list of images available on the bootflash disk
+      ios_command:
+        commands: 'write memory'
+
+    - name: Ensure router loads system image from boot system commands in startup config
+      ios_config:
+        lines: 'config-register 0x2102'
+
+    - name: Copy Running Config to Startup Config
+      ios_command:
+        commands:
+          - command: 'copy running-config startup-config'
+            prompt: 'Destination filename \[startup-config\]'
+            answer: "\r"
+
+    - name: Write Memory
+      ios_command:
+        commands: 'write memory'
+
+    - name: Reload
+      ios_command:
+        commands:
+          - command: 'reload'
+            prompt: 'Proceed with reload\? \[confirm\]'
+            answer: 'y'  
+
+    - name: Wait for Reload to Complete
+      wait_for:
+        host: "{{ ansible_host | default(inventory_hostname,boolean=True) }}"
+        port: 22
+        delay: 60
+        timeout: 300
+      connection: network_cli
+
+    - name: Send Email with Report
+      mail:
+        host: appgw.flex.com
+        port: 25
+        from: AWX <noreply_awxansible@flex.com>
+        to: Arun Ravichandran <arunkumar.ravichandran@flex.com>
+        subject: "Ansible Report"
+        body: "{{ inventory_hostname }} has been upgraded with new boot image {{ new_system_image }}"
+      delegate_to: localhost
+      run_once: yes
+
+    when: ansible_net_version != compliant_ios_version
+
+  - name: Gather IOS facts for verification
+    ios_facts:
+
+        
+  - name: Assert that the IOS version is correct
+    assert:
+      that:
+        - compliant_ios_version == ansible_net_version

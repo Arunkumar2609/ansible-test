@@ -1,0 +1,11 @@
+---
+# tasks file for snmp-test
+  - name: Get config for IOS devices
+    ios_facts:
+      gather_subset: all
+
+  - name: Push SNMP config to router running config
+    ios_config:
+      lines:
+        - 'snmp-server community {{ snmp_string }} RO'
+        - 'snmp-server community {{ snmp_string }} RW'

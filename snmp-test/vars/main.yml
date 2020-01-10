@@ -1,0 +1,3 @@
+---
+# vars file for snmp-test
+snmp_string: flex!wan
